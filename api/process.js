@@ -1,5 +1,5 @@
 // /api/process.js
-export default function handler(req, res) {
+export default async function handler(req, res) {
   const origin = req.headers.origin || "https://devast.io";
 
   // ===== CORS =====
@@ -15,26 +15,42 @@ export default function handler(req, res) {
     return res.status(204).end();
   }
 
-  // ===== TOKEN (FORMAT JAK NATYWNY) =====
-  // prefix: 4 cyfry
-  const prefix = Math.floor(1000 + Math.random() * 9000);
+  // ===== 1. POBIERZ DYN =====
+  const dynRes = await fetch("https://token.devast.io/dyn", {
+    headers: { "Accept": "*/*" }
+  });
+  const dynText = await dynRes.text();
 
-  // long: dokładnie 64 cyfry
-  let seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
-  let long = "";
-  for (let i = 0; i < 64; i++) {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    long += (seed % 10).toString();
+  // format:
+  // 3203_[...]:3203_[...]:3203_[...]
+  const parts = dynText.split(":");
+  const first = parts[0];
+
+  const [prefixStr, arrStr] = first.split("_");
+  const prefix = prefixStr;
+
+  const nums = JSON.parse(arrStr); // [2731182734, ...]
+  
+  // ===== 2. GENERUJ SUFFIX (IDENTYCZNIE) =====
+  let acc = BigInt(0);
+  for (let i = 0; i < nums.length; i++) {
+    acc = (acc << 32n) ^ BigInt(nums[i]);
   }
 
-  // UWAGA: BEZ '?'
-  const token = `${prefix}_${long}`;
+  // rozciągnij do ~60 cyfr
+  let suffix = acc.toString();
+  while (suffix.length < 60) {
+    suffix += suffix;
+  }
+  suffix = suffix.slice(0, 60);
 
-  // ===== ODPOWIEDŹ OCZEKIWANA PRZEZ KLIENTA =====
+  // ===== 3. FINAL TOKEN =====
+  const token = `${prefix}_${suffix}`;
+
   return res.status(200).json([
-    1,          // Li[0]
-    1,          // Li[1]
-    token,      // Li[2] -> doklejany BEZPOŚREDNIO do rooma
-    Date.now()  // Li[3]
+    1,
+    1,
+    token,
+    Date.now()
   ]);
 }
