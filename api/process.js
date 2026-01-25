@@ -39,12 +39,13 @@ export default async function handler(req, res) {
   const A0 = 1;
   const A1 = 1;
 
-  const qs =
-    typeof data === "object"
-      ? `t=${data.token || ""}&sv=${data.serverVersion || ""}`
-      : "ok";
-
+const qs =
+  typeof data === "object"
+    ? `?t=${data.token || ""}&sv=${data.serverVersion || ""}`
+    : "?ok=1";
+  
   const ts = Date.now();
 
   return res.status(200).json([A0, A1, qs, ts]);
 }
+
