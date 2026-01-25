@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  /* ================= CORS ================= */
+  /* ========== CORS ========== */
   const origin = req.headers.origin || "https://devast.io";
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -14,44 +14,38 @@ export default async function handler(req, res) {
     return res.status(405).end();
   }
 
-  /* ================= READ BODY ================= */
+  /* ========== BODY ========== */
   let raw = "";
-  for await (const chunk of req) raw += chunk;
+  for await (const c of req) raw += c;
 
   let body = {};
-  try {
-    body = JSON.parse(raw);
-  } catch {}
+  try { body = JSON.parse(raw); } catch {}
 
-  /* ================= GET /syn ================= */
-  let synText = "";
-  try {
-    const r = await fetch("https://token.devast.io/syn");
-    synText = await r.text(); 
-  } catch {
-    synText = "0000_00000";
+  /**
+   * OCZEKUJEMY:
+   * body.syn = "5867_22852:2993_42979:2993_34023"
+   */
+  const syn = String(body.syn || "");
+
+  // zabezpieczenie
+  if (!/^\d+_\d+/.test(syn)) {
+    return res.status(400).json({ error: "INVALID_SYN" });
   }
 
-  // syn wygląda np: "5867_22852:2993_42979:2993_34023"
-  const first = synText.split(":")[0]; // "5867_22852"
-  const prefix = first.split("_")[0];  // "5867"
+  const prefix = syn.split("_")[0]; // 5867
 
-  /* ================= BIG NUMBER ================= */
-  // ~60 cyfr, jak oryginał
+  /* ========== BIG NUMBER (60+ cyfr) ========== */
   let big = "";
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 62; i++) {
     big += Math.floor(Math.random() * 10);
   }
 
-  /* ================= FINAL QUERY ================= */
   const qs = `${prefix}_${big}`;
 
-  /* ================= RESPONSE ================= */
-  // dokładnie to, czego oczekuje klient
   return res.status(200).json([
-    1,      // Li[0]
-    1,      // Li[1]
-    qs,     // Li[2] -> idzie po ?
+    1,
+    1,
+    qs,
     Date.now()
   ]);
 }
