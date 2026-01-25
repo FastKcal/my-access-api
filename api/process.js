@@ -11,27 +11,26 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
-  // ZAWSZE 200, ZAWSZE POPRAWNE DANE
-  // brak zależności od body / token.devast.io
+  // ===== STABILNY TOKEN =====
 
-  // prefix 4 cyfry
-  const prefix = Math.floor(2000 + Math.random() * 8000);
+  // prefix (jak syn)
+  const prefix = Math.floor(5000 + Math.random() * 6000);
 
-  // 60–70 cyfr
-  let seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
+  // długa liczba (dokładnie cyfry, bez znaków)
+  let seed = (Date.now() + Math.floor(Math.random() * 1e9)) >>> 0;
   let long = "";
   for (let i = 0; i < 64; i++) {
-    seed = (seed * 1103515245 + 12345) >>> 0;
-    long += (seed % 10);
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    long += String(seed % 10);
   }
 
-  // UWAGA: BEZ '?' – klient sam dokleja
   const token = `${prefix}_${long}`;
 
+  // ZAWSZE poprawny format
   return res.status(200).json([
-    1,          // Li[0]
-    1,          // Li[1]
-    token,      // Li[2]  <<< MUSI BYĆ STRING
-    Date.now()  // Li[3]
+    1,
+    1,
+    token,
+    Date.now()
   ]);
 }
