@@ -1,13 +1,7 @@
 export default async function handler(req, res) {
-  const origin = req.headers.origin;
-
-  /* ===== CORS ===== */
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    origin && origin.endsWith("devast.io")
-      ? origin
-      : "https://devast.io"
-  );
+  /* ================= CORS ================= */
+  const origin = req.headers.origin || "https://devast.io";
+  res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -20,34 +14,44 @@ export default async function handler(req, res) {
     return res.status(405).end();
   }
 
-  /* ===== TOKEN (FORMAT DEVAST) ===== */
+  /* ================= READ BODY ================= */
+  let raw = "";
+  for await (const chunk of req) raw += chunk;
 
-  // prefix jak z token.devast.io/syn (2000–9000)
-  const prefix = Math.floor(2000 + Math.random() * 7000);
+  let body = {};
+  try {
+    body = JSON.parse(raw);
+  } catch {}
 
-  // długa liczba ~70 cyfr (LCG + timestamp)
-  let seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
-  let long = "";
-
-  for (let i = 0; i < 70; i++) {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    long += (seed % 10).toString();
+  /* ================= GET /syn ================= */
+  let synText = "";
+  try {
+    const r = await fetch("https://token.devast.io/syn");
+    synText = await r.text(); 
+  } catch {
+    synText = "0000_00000";
   }
 
-  // ⚠️ BEZ ZNAKU '?'
-  const wsToken = `${prefix}_${long}`;
+  // syn wygląda np: "5867_22852:2993_42979:2993_34023"
+  const first = synText.split(":")[0]; // "5867_22852"
+  const prefix = first.split("_")[0];  // "5867"
 
-  /*
-    Klient:
-    Li[0] → 1
-    Li[1] → 1
-    Li[2] → STRING (NIEPUSTY, BEZ '?')
-    Li[3] → cokolwiek != undefined
-  */
+  /* ================= BIG NUMBER ================= */
+  // ~60 cyfr, jak oryginał
+  let big = "";
+  for (let i = 0; i < 60; i++) {
+    big += Math.floor(Math.random() * 10);
+  }
+
+  /* ================= FINAL QUERY ================= */
+  const qs = `${prefix}_${big}`;
+
+  /* ================= RESPONSE ================= */
+  // dokładnie to, czego oczekuje klient
   return res.status(200).json([
-    1,
-    1,
-    wsToken,
+    1,      // Li[0]
+    1,      // Li[1]
+    qs,     // Li[2] -> idzie po ?
     Date.now()
   ]);
 }
