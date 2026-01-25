@@ -1,25 +1,25 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Vercel czasem parsuje JSON, czasem nie — robimy safe:
-  let body = req.body;
-  if (typeof body === "string") {
-    try { body = JSON.parse(body); } catch { body = {}; }
+  // Generuj 2 losowe wartości
+  const num1 = Math.floor(Math.random() * 3000) + 1000; // 1000-4000
+  
+  // MEGA DŁUGA LICZBA (jak oryginał)
+  let num2 = '';
+  for (let i = 0; i < 60; i++) { // 60-cyfrowa liczba
+    num2 += Math.floor(Math.random() * 10);
   }
 
-  const token = String(body?.token || "");
-  const serverVersion = String(body?.serverVersion || "");
-  const ts = Date.now();
+  // Format: "num1_num2"
+  const token = num1 + '_' + num2;
 
-  // te 2 wartości są w kliencie jako Li[0] i Li[1]
-  const A0 = 1;
-  const A1 = 1;
-
-  // to jest Li[2] i idzie po '?' do WebSocketa
-  const qs = `t=${encodeURIComponent(token)}&sv=${encodeURIComponent(serverVersion)}&ts=${ts}`;
-
-  // Li[3] byle nie undefined
-  return res.status(200).json([A0, A1, qs, ts]);
+  // Zwróć tablicę [val1, val2, token, timestamp]
+  return res.status(200).json([
+    num1,           // Li[0] - Client['AáÀÁå']
+    parseInt(num2.substring(0, 10)), // Li[1] - Client['ÄÅâáÄ'] (pierwsze 10 cyfr)
+    token,          // Li[2] - Client['åaáaa'] - to idzie do WebSocket URL
+    Date.now()      // Li[3] - Client['äÁÄÄÅ']
+  ]);
 }
