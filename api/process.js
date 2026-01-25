@@ -20,13 +20,13 @@ export default async function handler(req, res) {
     return res.status(405).end();
   }
 
-  /* ===== GENERATOR TOKENA ===== */
+  /* ===== TOKEN (FORMAT DEVAST) ===== */
 
-  // mała liczba (jak 2416 / 5867)
-  const prefix = Math.floor(2000 + Math.random() * 6000);
+  // prefix jak z token.devast.io/syn (2000–9000)
+  const prefix = Math.floor(2000 + Math.random() * 7000);
 
-  // generator długiej liczby (LCG + timestamp)
-  let seed = Date.now() ^ Math.floor(Math.random() * 0xffffffff);
+  // długa liczba ~70 cyfr (LCG + timestamp)
+  let seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
   let long = "";
 
   for (let i = 0; i < 70; i++) {
@@ -34,16 +34,16 @@ export default async function handler(req, res) {
     long += (seed % 10).toString();
   }
 
+  // ⚠️ BEZ ZNAKU '?'
   const wsToken = `${prefix}_${long}`;
 
   /*
-    Klient oczekuje:
-    Li[0] = 1
-    Li[1] = 1
-    Li[2] = QUERY STRING (bez '?')
-    Li[3] = cokolwiek != undefined
+    Klient:
+    Li[0] → 1
+    Li[1] → 1
+    Li[2] → STRING (NIEPUSTY, BEZ '?')
+    Li[3] → cokolwiek != undefined
   */
-
   return res.status(200).json([
     1,
     1,
