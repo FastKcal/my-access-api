@@ -1,8 +1,10 @@
 export default async function handler(req, res) {
-  const origin = req.headers.origin;
+  const origin = req.headers.origin || "";
 
-  /* ===== CORS – MUSI BYĆ ZAWSZE ===== */
-  if (origin && origin.endsWith("devast.io")) {
+  /* =====================================================
+     CORS – DEVAST.IO
+     ===================================================== */
+  if (origin.endsWith("devast.io")) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   } else {
     res.setHeader("Access-Control-Allow-Origin", "https://devast.io");
@@ -12,17 +14,23 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  /* ===== PRE-FLIGHT ===== */
+  /* =====================================================
+     PREFLIGHT
+     ===================================================== */
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
-  /* ===== TYLKO POST ===== */
+  /* =====================================================
+     TYLKO POST
+     ===================================================== */
   if (req.method !== "POST") {
-    return res.status(405).end();
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  /* ===== CZYTANIE BODY (TEXT) ===== */
+  /* =====================================================
+     BODY – DEVAST WYSYŁA TEXT / JSON (LOSOWO)
+     ===================================================== */
   let raw = "";
   for await (const chunk of req) {
     raw += chunk;
@@ -32,20 +40,35 @@ export default async function handler(req, res) {
   try {
     data = JSON.parse(raw);
   } catch {
-    data = raw;
+    data = {};
   }
 
-  /* ===== ODP. KTÓREJ OCZEKUJE KLIENT ===== */
+  /* =====================================================
+     WARTOŚCI OCZEKIWANE PRZEZ KLIENTA
+     Li[0], Li[1], Li[2], Li[3]
+     ===================================================== */
   const A0 = 1;
   const A1 = 1;
 
-const qs =
-  typeof data === "object"
-    ? `?t=${data.token || ""}&sv=${data.serverVersion || ""}`
-    : "?ok=1";
-  
+  const token = typeof data.token === "string" ? data.token : "";
+  const serverVersion =
+    typeof data.serverVersion === "string" ? data.serverVersion : "";
+
+  /* =====================================================
+     !!! WAŻNE !!!
+     QS MUSI ZACZYNAĆ SIĘ OD '?'
+     ===================================================== */
+  const qs =
+    token || serverVersion
+      ? `?t=${encodeURIComponent(token)}&sv=${encodeURIComponent(
+          serverVersion
+        )}`
+      : "?ok=1";
+
   const ts = Date.now();
 
+  /* =====================================================
+     ZWROT DOKŁADNIE JAK OCZEKUJE CLIENT
+     ===================================================== */
   return res.status(200).json([A0, A1, qs, ts]);
 }
-
