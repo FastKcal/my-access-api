@@ -1,31 +1,41 @@
-export default async function handler(req, res) {
+export const config = {
+  runtime: "edge"
+};
+
+export default async function handler(req) {
+  // ===== CORS – ZAWSZE NAJPIERW =====
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "https://devast.io",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Credentials": "true"
+  };
+
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    });
+  }
+
   try {
-    // ===== CORS (MUSI BYĆ NA POCZĄTKU) =====
-    res.setHeader("Access-Control-Allow-Origin", "https://devast.io");
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "*");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-
-    if (req.method === "OPTIONS") {
-      return res.status(204).end();
-    }
-
-    // ===== FETCH DYN =====
+    // ===== DYN =====
     const dynRes = await fetch("https://token.devast.io/dyn");
     if (!dynRes.ok) {
-      return res.status(502).json({ error: "dyn fetch failed" });
+      return new Response(JSON.stringify({ error: "dyn failed" }), {
+        status: 502,
+        headers: corsHeaders
+      });
     }
 
     const dynText = await dynRes.text();
-    // przykład:
-    // 3203_[2731182734,...]:3203_[...]
 
-    const [first] = dynText.split(":");
+    // 3203_[...]:3203_[...]
+    const first = dynText.split(":")[0];
     const [prefix, arr] = first.split("_");
-
     const nums = JSON.parse(arr);
 
-    // ===== GENERACJA SUFFIX =====
+    // ===== GENERACJA =====
     let acc = 0n;
     for (const n of nums) {
       acc = (acc << 32n) ^ BigInt(n >>> 0);
@@ -37,19 +47,24 @@ export default async function handler(req, res) {
 
     const token = `${prefix}_${suffix}`;
 
-    // ===== ODPOWIEDŹ (FORMAT JAK CLIENT) =====
-    return res.status(200).json([
-      1,
-      1,
-      token,
-      Date.now()
-    ]);
+    return new Response(
+      JSON.stringify([1, 1, token, Date.now()]),
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        }
+      }
+    );
 
-  } catch (err) {
-    // ⛑️ nigdy nie crashuj bez odpowiedzi
-    return res.status(500).json({
-      error: "internal",
-      message: err.message
-    });
+  } catch (e) {
+    return new Response(
+      JSON.stringify({ error: "crash", message: e.message }),
+      {
+        status: 500,
+        headers: corsHeaders
+      }
+    );
   }
 }
