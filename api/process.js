@@ -1,7 +1,11 @@
 export default async function handler(req, res) {
-  /* ========== CORS ========== */
-  const origin = req.headers.origin || "https://devast.io";
-  res.setHeader("Access-Control-Allow-Origin", origin);
+  const origin = req.headers.origin || "";
+
+  /* ===== CORS ===== */
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    origin.endsWith("devast.io") ? origin : "https://devast.io"
+  );
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -10,42 +14,30 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
-  if (req.method !== "POST") {
-    return res.status(405).end();
+  // ❗ NIE BLOKUJ POSTA – klient bywa niestabilny
+  // if (req.method !== "POST") return res.status(200).json([1,1,"0_0",Date.now()]);
+
+  /* ===== ZAWSZE GENERUJ TOKEN ===== */
+
+  // prefix jak w oryginale (2–4 cyfry)
+  const prefix = Math.floor(2000 + Math.random() * 6000);
+
+  // długa liczba (70 cyfr)
+  let seed = Date.now() ^ (Math.random() * 0xffffffff);
+  let long = "";
+
+  for (let i = 0; i < 70; i++) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    long += (seed % 10).toString();
   }
 
-  /* ========== BODY ========== */
-  let raw = "";
-  for await (const c of req) raw += c;
+  const wsToken = `${prefix}_${long}`;
 
-  let body = {};
-  try { body = JSON.parse(raw); } catch {}
-
-  /**
-   * OCZEKUJEMY:
-   * body.syn = "5867_22852:2993_42979:2993_34023"
-   */
-  const syn = String(body.syn || "");
-
-  // zabezpieczenie
-  if (!/^\d+_\d+/.test(syn)) {
-    return res.status(400).json({ error: "INVALID_SYN" });
-  }
-
-  const prefix = syn.split("_")[0]; // 5867
-
-  /* ========== BIG NUMBER (60+ cyfr) ========== */
-  let big = "";
-  for (let i = 0; i < 62; i++) {
-    big += Math.floor(Math.random() * 10);
-  }
-
-  const qs = `${prefix}_${big}`;
-
+  // ❗ ZAWSZE 4 ELEMENTY
   return res.status(200).json([
-    1,
-    1,
-    qs,
-    Date.now()
+    1,          // Li[0]
+    1,          // Li[1]
+    wsToken,    // Li[2]  <<< TO JEST KLUCZ
+    Date.now()  // Li[3]
   ]);
 }
