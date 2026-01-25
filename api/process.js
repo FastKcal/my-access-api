@@ -1,26 +1,31 @@
 export default async function handler(req, res) {
-  /* ========= CORS ========= */
-  res.setHeader("Access-Control-Allow-Origin", "https://devast.io");
+  const origin = req.headers.origin;
+
+  /* ===== CORS – MUSI BYĆ ZAWSZE ===== */
+  if (origin && origin.endsWith("devast.io")) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "https://devast.io");
+  }
+
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Access-Control-Max-Age", "86400");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  // Preflight
+  /* ===== PRE-FLIGHT ===== */
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
+  /* ===== TYLKO POST ===== */
   if (req.method !== "POST") {
     return res.status(405).end();
   }
 
-  /* ========= BODY (text/plain) ========= */
+  /* ===== CZYTANIE BODY (TEXT) ===== */
   let raw = "";
-
-  try {
-    for await (const chunk of req) raw += chunk;
-  } catch {
-    return res.status(400).json([0, 0, "", 0]);
+  for await (const chunk of req) {
+    raw += chunk;
   }
 
   let data;
@@ -30,19 +35,16 @@ export default async function handler(req, res) {
     data = raw;
   }
 
-  /* ========= KRYTYCZNE =========
-     Klient oczekuje TABLICY 4 ELEMENTÓW
-  */
-  let A0 = 1; // Li[0]
-  let A1 = 1; // Li[1]
+  /* ===== ODP. KTÓREJ OCZEKUJE KLIENT ===== */
+  const A0 = 1;
+  const A1 = 1;
 
-  // Li[2] — MUSI BYĆ STRING, IDZIE DO WS
-  let qs = typeof data === "object"
-    ? `t=${data.token || ""}&sv=${data.serverVersion || ""}`
-    : "";
+  const qs =
+    typeof data === "object"
+      ? `t=${data.token || ""}&sv=${data.serverVersion || ""}`
+      : "ok";
 
-  // Li[3] — cokolwiek !== undefined
-  let ts = Date.now();
+  const ts = Date.now();
 
   return res.status(200).json([A0, A1, qs, ts]);
 }
