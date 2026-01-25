@@ -1,11 +1,8 @@
+// /api/process.js
 export default async function handler(req, res) {
-  const origin = req.headers.origin || "";
+  const origin = req.headers.origin || "https://devast.io";
 
-  /* ===== CORS ===== */
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    origin.endsWith("devast.io") ? origin : "https://devast.io"
-  );
+  res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -14,30 +11,27 @@ export default async function handler(req, res) {
     return res.status(204).end();
   }
 
-  // ❗ NIE BLOKUJ POSTA – klient bywa niestabilny
-  // if (req.method !== "POST") return res.status(200).json([1,1,"0_0",Date.now()]);
+  // ZAWSZE 200, ZAWSZE POPRAWNE DANE
+  // brak zależności od body / token.devast.io
 
-  /* ===== ZAWSZE GENERUJ TOKEN ===== */
+  // prefix 4 cyfry
+  const prefix = Math.floor(2000 + Math.random() * 8000);
 
-  // prefix jak w oryginale (2–4 cyfry)
-  const prefix = Math.floor(2000 + Math.random() * 6000);
-
-  // długa liczba (70 cyfr)
-  let seed = Date.now() ^ (Math.random() * 0xffffffff);
+  // 60–70 cyfr
+  let seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
   let long = "";
-
-  for (let i = 0; i < 70; i++) {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    long += (seed % 10).toString();
+  for (let i = 0; i < 64; i++) {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    long += (seed % 10);
   }
 
-  const wsToken = `${prefix}_${long}`;
+  // UWAGA: BEZ '?' – klient sam dokleja
+  const token = `${prefix}_${long}`;
 
-  // ❗ ZAWSZE 4 ELEMENTY
   return res.status(200).json([
     1,          // Li[0]
     1,          // Li[1]
-    wsToken,    // Li[2]  <<< TO JEST KLUCZ
+    token,      // Li[2]  <<< MUSI BYĆ STRING
     Date.now()  // Li[3]
   ]);
 }
