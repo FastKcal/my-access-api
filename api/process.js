@@ -1,25 +1,46 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+    try {
+        let body = '';
 
-  // Vercel czasem parsuje JSON, czasem nie — robimy safe:
-  let body = req.body;
-  if (typeof body === "string") {
-    try { body = JSON.parse(body); } catch { body = {}; }
-  }
+        // Vercel edge / node compatibility
+        for await (const chunk of req) {
+            body += chunk;
+        }
 
-  const token = String(body?.token || "");
-  const serverVersion = String(body?.serverVersion || "");
-  const ts = Date.now();
+        // body przychodzi jako TEXT
+        let data;
+        try {
+            data = JSON.parse(body);
+        } catch {
+            // jeśli to nie JSON – zwróć surowe
+            data = body;
+        }
 
-  // te 2 wartości są w kliencie jako Li[0] i Li[1]
-  const A0 = 1;
-  const A1 = 1;
+        // 👇 dokładnie to, czego oczekuje klient
+        // tablica 4 elementów
+        if (Array.isArray(data)) {
+            return res.status(200).json([
+                data[0],
+                data[1],
+                data[2],
+                data[3]
+            ]);
+        }
 
-  // to jest Li[2] i idzie po '?' do WebSocketa
-  const qs = `t=${encodeURIComponent(token)}&sv=${encodeURIComponent(serverVersion)}&ts=${ts}`;
+        // fallback
+        return res.status(200).json([
+            data,
+            null,
+            null,
+            null
+        ]);
 
-  // Li[3] byle nie undefined
-  return res.status(200).json([A0, A1, qs, ts]);
+    } catch (e) {
+        return res.status(500).json([
+            null,
+            null,
+            null,
+            null
+        ]);
+    }
 }
