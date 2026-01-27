@@ -8,9 +8,11 @@ export default async function handler(req, res) {
     }
     
     try {
-        // Query format: 8099_5229009146648096195797666599 (28 cyfr po _)
-        const randomDigits = Math.floor(Math.random() * 1e28).toString().padStart(28, '0');
-        const queryString = `8099_${randomDigits}`;
+        // Query: 8099_5229009146648096195797666599
+        const part1 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
+        const part2 = Math.floor(Math.random() * 1e10).toString().padStart(10, '0');
+        const part3 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
+        const queryString = `8099_${part1}${part2}${part3}`;
         
         // Token 74 chars
         const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -19,11 +21,12 @@ export default async function handler(req, res) {
             token += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         
+        // WAŻNE: wszystko jako stringi!
         return res.status(200).json([
-            'frankfurt',
-            '5',
-            queryString,
-            token
+            'frankfurt',     // region (string)
+            '5',            // server (STRING nie number!)
+            queryString,    // query
+            token           // token
         ]);
     } catch (error) {
         return res.status(500).json({ error: error.message });
