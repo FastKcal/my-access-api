@@ -8,27 +8,69 @@ export default async function handler(req, res) {
     }
     
     try {
-        // Query: 8099_5229009146648096195797666599
-        const part1 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
-        const part2 = Math.floor(Math.random() * 1e10).toString().padStart(10, '0');
-        const part3 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
-        const queryString = `8099_${part1}${part2}${part3}`;
+        const response = await fetch('https://token.devast.io/syn', {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': '*/*',
+                'Origin': 'https://devast.io',
+                'Referer': 'https://devast.io/'
+            }
+        });
+
+        if (!response.ok) throw new Error('Token fetch failed');
+
+        const tokenData = await response.text();
+        let region, server, query, token;
+
+        if (tokenData.includes(',')) {
+            const parts = tokenData.split(',');
+            
+            if (parts.length >= 4) {
+                region = parts[0].trim();
+                server = parts[1].trim();
+                query = parts[2].trim();
+                token = parts[3].trim();
+            } else {
+                token = parts[0].trim();
+                region = 'frankfurt';
+                server = '1';
+                const p1 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
+                const p2 = Math.floor(Math.random() * 1e10).toString().padStart(10, '0');
+                const p3 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
+                query = `8099_${p1}${p2}${p3}`;
+            }
+        } else {
+            token = tokenData.trim();
+            region = 'frankfurt';
+            server = '1';
+            const p1 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
+            const p2 = Math.floor(Math.random() * 1e10).toString().padStart(10, '0');
+            const p3 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
+            query = `8099_${p1}${p2}${p3}`;
+        }
+
+        if (!token || token.length < 10) throw new Error('Invalid token');
+
+        return res.status(200).json([
+            region,
+            String(server),
+            query,
+            token
+        ]);
+
+    } catch (error) {
+        const p1 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
+        const p2 = Math.floor(Math.random() * 1e10).toString().padStart(10, '0');
+        const p3 = Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
+        const queryString = `8099_${p1}${p2}${p3}`;
         
-        // Token 74 chars
         const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-        let token = '';
+        let fallbackToken = '';
         for (let i = 0; i < 74; i++) {
-            token += chars.charAt(Math.floor(Math.random() * chars.length));
+            fallbackToken += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         
-        // WAŻNE: wszystko jako stringi!
-        return res.status(200).json([
-            'frankfurt',     // region (string)
-            '5',            // server (STRING nie number!)
-            queryString,    // query
-            token           // token
-        ]);
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
+        return res.status(200).json(['frankfurt', '1', queryString, fallbackToken]);
     }
 }
