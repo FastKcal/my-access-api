@@ -1,25 +1,55 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  // Vercel czasem parsuje JSON, czasem nie — robimy safe:
-  let body = req.body;
-  if (typeof body === "string") {
-    try { body = JSON.parse(body); } catch { body = {}; }
-  }
-
-  const token = String(body?.token || "");
-  const serverVersion = String(body?.serverVersion || "");
-  const ts = Date.now();
-
-  // te 2 wartości są w kliencie jako Li[0] i Li[1]
-  const A0 = 1;
-  const A1 = 1;
-
-  // to jest Li[2] i idzie po '?' do WebSocketa
-  const qs = `t=${encodeURIComponent(token)}&sv=${encodeURIComponent(serverVersion)}&ts=${ts}`;
-
-  // Li[3] byle nie undefined
-  return res.status(200).json([A0, A1, qs, ts]);
+    // CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+    
+    try {
+        // Generate token components
+        const timestamp = Date.now();
+        const r1 = Math.floor(Math.random() * 10000);
+        const r2 = Math.floor(Math.random() * 10000);
+        const r3 = Math.floor(Math.random() * 10000);
+        const r4 = Math.floor(Math.random() * 10000);
+        const r5 = Math.floor(Math.random() * 10000);
+        const r6 = Math.floor(Math.random() * 10000);
+        const r7 = Math.floor(Math.random() * 10000);
+        
+        // Generate session token (74 characters)
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        let token = '';
+        for (let i = 0; i < 74; i++) {
+            token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        
+        // Build query string (from screenshot: 8099_227938703627973720924551291744736097223347481412127944441)
+        const queryString = `8099_${r1}${r2}${r3}${r4}${r5}${r6}${r7}`;
+        
+        // Response format: [region, server, queryString, sessionToken]
+        const response = [
+            'frankfurt',    // Region
+            '1',           // Server number
+            queryString,   // Query string for WebSocket
+            token          // Session token
+        ];
+        
+        return res.status(200).json(response);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        return res.status(500).json({ 
+            error: 'Internal server error',
+            message: error.message 
+        });
+    }
 }
+
+
